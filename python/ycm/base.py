@@ -147,6 +147,9 @@ def OverlapLength( left_string, right_string ):
   if not left_string_length or not right_string_length:
     return 0
 
+  if left_string[ -1: ] in [ ')', ']', '}', '>' ]:
+    return 0
+
   # Truncate the longer string.
   if left_string_length > right_string_length:
     left_string = left_string[ -right_string_length: ]

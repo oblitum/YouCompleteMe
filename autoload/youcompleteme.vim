@@ -127,6 +127,7 @@ function! s:SetUpPython() abort
   py from ycmd import user_options_store
   py user_options_store.SetAll( base.BuildServerConf() )
   py from ycm import vimsupport
+  py from ycm.param_completion import clang_complete
 
   if !pyeval( 'base.CompatibleWithYcmCore()')
     echohl WarningMsg |
@@ -375,6 +376,8 @@ function! s:OnBufferVisit()
     return
   endif
 
+
+  py clang_complete.setup()
   call s:SetUpCompleteopt()
   call s:SetCompleteFunc()
   py ycm_state.OnBufferVisit()
@@ -566,7 +569,9 @@ function! s:UpdateDiagnosticNotifications()
     return
   endif
 
-  py ycm_state.UpdateDiagnosticInterface()
+  if !pumvisible()
+    py ycm_state.UpdateDiagnosticInterface()
+  endif
 endfunction
 
 

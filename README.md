@@ -1,3 +1,48 @@
+##NOTICE
+
+This is a fork with preliminarily support for parameter completion for C-family
+languages with semantic completion enabled. This originated in YCM issue
+[#234](https://github.com/Valloric/YouCompleteMe/issues/234).
+
+Usage:
+
+After selecting a prototype from completion menu, press ESC to go to normal
+mode, this will automatically select the first parameter placeholder for
+editing. You can use TAB to browse through parameter placeholders.
+
+For selection of first argument to happen fast in terminal, please add this
+to your `.vimrc`. Check the help to understand what this option does, it
+seems as a good default configuration anyway, whether you use this plugin
+or not, you'll end up with a more responsive `InsertLeave`:
+
+```vim
+set ttimeoutlen=50  " for faster InsertLeave triggering
+```
+
+For selection and browsing purpose, parameters are marked with special
+delimiting characters:
+
+- `⟪` and `⟫` for obligatory parameters
+- `⟦` and `⟧` for optional parameters
+
+Parameters can have custom highlighting making use of `placeHolder` and
+`optionalPlaceHolder` highlighting groups.
+
+This fork have the following additional options (displayed with default values):
+
+```vim
+let g:ycm_extra_spacing = 0  " Controls spaces around function parameters
+
+```
+
+This is a sample, click it to see the video in higher definition:
+
+<a href="https://docs.google.com/file/d/0B0_mzHzbl3GbLUJqZW55SlRwN1k">
+  ![YouCompleteMe with Params GIF demo](http://i.imgur.com/mxsq9Yy.gif)
+</a>
+
+---
+
 YouCompleteMe: a code-completion engine for Vim
 ===============================================
 
