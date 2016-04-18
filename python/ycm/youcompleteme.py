@@ -85,7 +85,7 @@ SERVER_CRASH_MESSAGE_STDERR_FILE_DELETED = (
   "Logfile was deleted; set 'g:ycm_server_keep_logfiles' to see errors "
   "in the future." )
 SERVER_IDLE_SUICIDE_SECONDS = 10800  # 3 hours
-DIAGNOSTIC_UI_FILETYPES = set( [ 'cpp', 'cs', 'c', 'objc', 'objcpp' ] )
+DIAGNOSTIC_UI_FILETYPES = set( [ 'cpp', 'cs', 'c', 'objc', 'objcpp', 'swift' ] )
 
 
 class YouCompleteMe( object ):
