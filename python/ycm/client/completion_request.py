@@ -31,7 +31,7 @@ from ycm.client.base_request import ( BaseRequest, JsonFromFuture,
                                       MakeServerException )
 from ycmd.responses import ServerError
 
-TIMEOUT_SECONDS = 0.5
+TIMEOUT_SECONDS = 3.0
 
 
 class CompletionRequest( BaseRequest ):
