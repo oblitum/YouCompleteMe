@@ -638,9 +638,9 @@ process.
 
   - C# support: install [Mono on non-Windows platforms][mono-install]. Navigate
     to `YouCompleteMe/third_party/ycmd/third_party/OmniSharpServer` and run
-    `msbuild` (Windows) or `xbuild` (other platforms, using Mono) depending on
-    your platform. On Windows, be sure that [the build utility `msbuild` is in
-    your PATH][add-msbuild-to-path].
+    `msbuild /property:Configuration=Release` on Windows. Replace `msbuild` by
+    `xbuild` on other platforms. On Windows, be sure that [the build utility
+    `msbuild` is in your PATH][add-msbuild-to-path].
 
   - Go support: install [Go][go-install] and add it to your path. Navigate to
     `YouCompleteMe/third_party/ycmd/third_party/gocode` and run `go build`.
@@ -2814,9 +2814,9 @@ version of Python.
 
 ### On Windows I get `E887: Sorry, this command is disabled, the Python's site module could not be loaded`
 
-If you are running vim on Windows with Python 2.7.11, this is likely caused by 
+If you are running vim on Windows with Python 2.7.11, this is likely caused by
 a [bug][vim_win-python2.7.11-bug]. Follow this [workaround]
-[vim_win-python2.7.11-bug_workaround] or use a different version (Python 2.7.9 
+[vim_win-python2.7.11-bug_workaround] or use a different version (Python 2.7.12
 does not suffer from the bug).
 
 ### I can't complete python packages in a virtual environment.
