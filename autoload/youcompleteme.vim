@@ -27,6 +27,7 @@ let s:defer_omnifunc = 1
 let s:old_cursor_position = []
 let s:cursor_moved = 0
 let s:moved_vertically_in_insert_mode = 0
+let s:previous_allowed_buffer_number = 0
 
 
 function! s:UsingPython2()
@@ -89,7 +90,8 @@ function! youcompleteme#Enable()
     " the user does :enew and then :set ft=something, we need to run buf init
     " code again.
     autocmd BufReadPre * call s:OnBufferReadPre( expand( '<afile>:p' ) )
-    autocmd BufRead,BufEnter,FileType * call s:OnBufferVisit()
+    autocmd BufRead,FileType * call s:OnBufferRead()
+    autocmd BufEnter * call s:OnBufferEnter()
     autocmd BufUnload * call s:OnBufferUnload( expand( '<afile>:p' ) )
     autocmd CursorHold,CursorHoldI * call s:OnCursorHold()
     autocmd InsertLeave * call s:OnInsertLeave()
@@ -117,7 +119,7 @@ function! youcompleteme#Enable()
   " triggering for the first loaded file. This should be the last commands
   " executed in this function!
   call s:OnBufferReadPre( expand( '<afile>:p' ) )
-  call s:OnBufferVisit()
+  call s:OnBufferRead()
 endfunction
 
 
@@ -322,7 +324,7 @@ function! s:TurnOffSyntasticForCFamily()
 endfunction
 
 
-function! s:AllowedToCompleteInCurrentFile()
+function! s:AllowedToCompleteInCurrentBuffer()
   if empty( &filetype ) ||
         \ getbufvar( winbufnr( winnr() ), "&buftype" ) ==# 'nofile' ||
         \ &filetype ==# 'qf'
@@ -338,6 +340,19 @@ function! s:AllowedToCompleteInCurrentFile()
   let blacklist_allows = !has_key( g:ycm_filetype_blacklist, &filetype )
 
   return whitelist_allows && blacklist_allows
+endfunction
+
+
+function! s:VisitedBufferRequiresReparse()
+  if !s:AllowedToCompleteInCurrentBuffer()
+    return 0
+  endif
+
+  if bufnr( '' ) ==# s:previous_allowed_buffer_number
+    return 0
+  endif
+  let s:previous_allowed_buffer_number = bufnr( '' )
+  return 1
 endfunction
 
 
@@ -425,13 +440,13 @@ function! s:OnBufferReadPre(filename)
   endif
 endfunction
 
-function! s:OnBufferVisit()
+function! s:OnBufferRead()
   " We need to do this even when we are not allowed to complete in the current
-  " file because we might be allowed to complete in the future! The canonical
+  " buffer because we might be allowed to complete in the future! The canonical
   " example is creating a new buffer with :enew and then setting a filetype.
   call s:SetUpYcmChangedTick()
 
-  if !s:AllowedToCompleteInCurrentFile()
+  if !s:AllowedToCompleteInCurrentBuffer()
     return
   endif
 
@@ -447,8 +462,18 @@ function! s:OnBufferVisit()
 endfunction
 
 
+function! s:OnBufferEnter()
+  if !s:VisitedBufferRequiresReparse()
+    return
+  endif
+
+  exec s:python_command "ycm_state.OnBufferVisit()"
+  call s:OnFileReadyToParse()
+endfunction
+
+
 function! s:OnBufferUnload( deleted_buffer_file )
-  if !s:AllowedToCompleteInCurrentFile() || empty( a:deleted_buffer_file )
+  if !s:AllowedToCompleteInCurrentBuffer() || empty( a:deleted_buffer_file )
     return
   endif
 
@@ -458,7 +483,7 @@ endfunction
 
 
 function! s:OnCursorHold()
-  if !s:AllowedToCompleteInCurrentFile()
+  if !s:AllowedToCompleteInCurrentBuffer()
     return
   endif
 
@@ -508,7 +533,7 @@ endfunction
 
 
 function! s:OnTextChangedInsertMode()
-  if !s:AllowedToCompleteInCurrentFile()
+  if !s:AllowedToCompleteInCurrentBuffer()
     return
   endif
 
@@ -534,7 +559,7 @@ endfunction
 
 
 function! s:OnCursorMovedNormalMode()
-  if !s:AllowedToCompleteInCurrentFile()
+  if !s:AllowedToCompleteInCurrentBuffer()
     return
   endif
 
@@ -544,7 +569,7 @@ endfunction
 
 
 function! s:OnInsertLeave()
-  if !s:AllowedToCompleteInCurrentFile()
+  if !s:AllowedToCompleteInCurrentBuffer()
     return
   endif
 
@@ -559,7 +584,7 @@ endfunction
 
 
 function! s:OnInsertEnter()
-  if !s:AllowedToCompleteInCurrentFile()
+  if !s:AllowedToCompleteInCurrentBuffer()
     return
   endif
 
