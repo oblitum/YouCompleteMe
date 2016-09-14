@@ -2600,7 +2600,7 @@ with `--enable-framework`):
   `PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install {version}`
 
 
-## `install.py` says python must be compiled with `--enable-framework`. Wat?
+### `install.py` says python must be compiled with `--enable-framework`. Wat?
 
 See the previous answer for how to ensure your python is built to support
 dynamic modules.
@@ -2646,6 +2646,16 @@ options:
 g:UltiSnipsExpandTrigger
 g:UltiSnipsJumpForwardTrigger
 g:UltiSnipsJumpBackwardTrigger
+```
+
+### Snippets added with `:UltiSnipsAddFiletypes` do not appear in the popup menu
+
+For efficiency, YCM only fetches UltiSnips snippets in specific scenarios like
+visiting a buffer or setting its filetype. You can force YCM to retrieve them by
+manually triggering the `FileType` autocommand:
+
+```viml
+:doautocmd FileType
 ```
 
 ### Why isn't YCM just written in plain VimScript, FFS?
