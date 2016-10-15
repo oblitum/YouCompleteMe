@@ -3,6 +3,7 @@ YouCompleteMe: a code-completion engine for Vim
 
 [![Build Status](https://travis-ci.org/Valloric/YouCompleteMe.svg?branch=master)](https://travis-ci.org/Valloric/YouCompleteMe)
 [![Build status](https://ci.appveyor.com/api/projects/status/ag9uqwi8s6btwjd8/branch/master?svg=true)](https://ci.appveyor.com/project/Valloric/YouCompleteMe)
+[![Coverage Status](https://codecov.io/gh/Valloric/YouCompleteMe/branch/master/graph/badge.svg)](https://codecov.io/gh/Valloric/YouCompleteMe)
 
 - [Intro](#intro)
 - [Installation](#installation)
@@ -210,10 +211,10 @@ that are conservatively turned off by default that you may want to turn on.
 Please refer to the full Installation Guide below; the following commands are
 provided on a best-effort basis and may not work for you.
 
-Make sure you have Vim 7.4.143 with python2 or python3 support. Ubuntu 14.04 and
-later have a Vim that's recent enough. You can see the version of Vim installed
-by running `vim --version`. If the version is too old, you may need to [compile
-Vim from source][vim-build] (don't worry, it's easy).
+Make sure you have Vim 7.4.143 with Python 2 or Python 3 support. Ubuntu 14.10
+and later have a Vim that's recent enough. You can see the version of Vim
+installed by running `vim --version`. If the version is too old, you may need to
+[compile Vim from source][vim-build] (don't worry, it's easy).
 
 Install YouCompleteMe with [Vundle][].
 
@@ -1307,6 +1308,19 @@ NOTE: Causes re-parsing of the current translation unit.
 
 Supported in filetypes: `c, cpp, objc, objcpp, javascript, typescript`
 
+#### The `GetTypeImprecise` subcommand
+
+WARNING: This command trades correctness for speed!
+
+Same as the `GetType` command except that it doesn't recompile the file with
+libclang before looking up nodes in the AST. This can be very useful when you're
+editing files that take long to compile but you know that you haven't made any
+changes since the last parse that would lead to incorrect type. When you're
+just browsing around your codebase, this command can spare you quite a bit of
+latency.
+
+Supported in filetypes: `c, cpp, objc, objcpp`
+
 #### The `GetParent` subcommand
 
 Echos the semantic parent of the point under the cursor.
@@ -1350,6 +1364,19 @@ under the cursor. Depending on the file type, this includes things like:
 
 Supported in filetypes: `c, cpp, objc, objcpp, cs, python, typescript,
 javascript`
+
+#### The `GetDocImprecise` subcommand
+
+WARNING: This command trades correctness for speed!
+
+Same as the `GetDoc` command except that it doesn't recompile the file with
+libclang before looking up nodes in the AST. This can be very useful when you're
+editing files that take long to compile but you know that you haven't made any
+changes since the last parse that would lead to incorrect docs. When you're
+just browsing around your codebase, this command can spare you quite a bit of
+latency.
+
+Supported in filetypes: `c, cpp, objc, objcpp`
 
 ### Refactoring and FixIt Commands
 

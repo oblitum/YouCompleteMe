@@ -1,4 +1,4 @@
-# Copyright (C) 2015 YouCompleteMe contributors
+# Copyright (C) 2015-2016 YouCompleteMe contributors
 #
 # This file is part of YouCompleteMe.
 #
@@ -23,16 +23,17 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import *  # noqa
 
-from ycm.test_utils import MockVimModule, ExtendedMock
+from ycm.tests.test_utils import ExtendedMock, MockVimModule, VimBuffer
 MockVimModule()
 
 import contextlib
 import os
 
-from ycm.tests.server_test import Server_test
+from ycm.tests import YouCompleteMeInstance
 from ycmd.responses import ( BuildDiagnosticData, Diagnostic, Location, Range,
                              UnknownExtraConf, ServerError )
 
+from hamcrest import assert_that, contains, has_entries
 from mock import call, MagicMock, patch
 from nose.tools import eq_, ok_
 
@@ -59,46 +60,19 @@ def MockArbitraryBuffer( filetype, native_available = True ):
   """Used via the with statement, set up mocked versions of the vim module such
   that a single buffer is open with an arbitrary name and arbirary contents. Its
   filetype is set to the supplied filetype"""
-  with patch( 'vim.current' ) as vim_current:
-    def VimEval( value ):
-      """Local mock of the vim.eval() function, used to ensure we get the
-      correct behvaiour"""
 
-      if value == '&omnifunc':
-        # The omnicompleter is not required here
-        return ''
+  # Arbitrary, but valid, single buffer open.
+  current_buffer = VimBuffer( os.path.realpath( 'TEST_BUFFER' ),
+                              window = 1,
+                              filetype = filetype )
 
-      if value == 'getbufvar(0, "&mod")':
-        # Ensure that we actually send the even to the server
-        return 1
-
-      if value == 'getbufvar(0, "&ft")' or value == '&filetype':
-        return filetype
-
-      if value.startswith( 'bufnr(' ):
-        return 0
-
-      if value.startswith( 'bufwinnr(' ):
-        return 0
-
-      raise ValueError( 'Unexpected evaluation' )
-
-    # Arbitrary, but valid, cursor position
-    vim_current.window.cursor = ( 1, 2 )
-
-    # Arbitrary, but valid, single buffer open
-    current_buffer = MagicMock()
-    current_buffer.number = 0
-    current_buffer.filename = os.path.realpath( 'TEST_BUFFER' )
-    current_buffer.name = 'TEST_BUFFER'
-    current_buffer.window = 0
-
-    # The rest just mock up the Vim module so that our single arbitrary buffer
-    # makes sense to vimsupport module.
-    with patch( 'vim.buffers', [ current_buffer ] ):
-      with patch( 'vim.current.buffer', current_buffer ):
-        with patch( 'vim.eval', side_effect=VimEval ):
-          yield
+  # The rest just mock up the Vim module so that our single arbitrary buffer
+  # makes sense to vimsupport module.
+  with patch( 'vim.buffers', [ current_buffer ] ):
+    with patch( 'vim.current.buffer', current_buffer ):
+      # Arbitrary but valid cursor position.
+      with patch( 'vim.current.window.cursor', ( 1, 2 ) ):
+        yield
 
 
 @contextlib.contextmanager
@@ -136,240 +110,351 @@ def MockEventNotification( response_method, native_filetype_completer = True ):
         yield
 
 
-class EventNotification_test( Server_test ):
+@patch( 'ycm.vimsupport.PostVimMessage', new_callable = ExtendedMock )
+@YouCompleteMeInstance()
+def EventNotification_FileReadyToParse_NonDiagnostic_Error_test(
+    ycm, post_vim_message ):
 
-  @patch( 'ycm.vimsupport.PostVimMessage', new_callable = ExtendedMock )
-  def FileReadyToParse_NonDiagnostic_Error_test( self, post_vim_message ):
-    # This test validates the behaviour of YouCompleteMe.HandleFileParseRequest
-    # in combination with YouCompleteMe.OnFileReadyToParse when the completer
-    # raises an exception handling FileReadyToParse event notification
-    ERROR_TEXT = 'Some completer response text'
+  # This test validates the behaviour of YouCompleteMe.HandleFileParseRequest
+  # in combination with YouCompleteMe.OnFileReadyToParse when the completer
+  # raises an exception handling FileReadyToParse event notification
+  ERROR_TEXT = 'Some completer response text'
 
-    def ErrorResponse( *args ):
-      raise ServerError( ERROR_TEXT )
+  def ErrorResponse( *args ):
+    raise ServerError( ERROR_TEXT )
 
-    with MockArbitraryBuffer( 'javascript' ):
-      with MockEventNotification( ErrorResponse ):
-        self._server_state.OnFileReadyToParse()
-        assert self._server_state.FileParseRequestReady()
-        self._server_state.HandleFileParseRequest()
+  with MockArbitraryBuffer( 'javascript' ):
+    with MockEventNotification( ErrorResponse ):
+      ycm.OnFileReadyToParse()
+      ok_( ycm.FileParseRequestReady() )
+      ycm.HandleFileParseRequest()
 
-        # The first call raises a warning
-        post_vim_message.assert_has_exact_calls( [
-          call( ERROR_TEXT, truncate = False )
+      # The first call raises a warning
+      post_vim_message.assert_has_exact_calls( [
+        call( ERROR_TEXT, truncate = False )
+      ] )
+
+      # Subsequent calls don't re-raise the warning
+      ycm.HandleFileParseRequest()
+      post_vim_message.assert_has_exact_calls( [
+        call( ERROR_TEXT, truncate = False )
+      ] )
+
+      # But it does if a subsequent event raises again
+      ycm.OnFileReadyToParse()
+      ok_( ycm.FileParseRequestReady() )
+      ycm.HandleFileParseRequest()
+      post_vim_message.assert_has_exact_calls( [
+        call( ERROR_TEXT, truncate = False ),
+        call( ERROR_TEXT, truncate = False )
+      ] )
+
+
+@patch( 'vim.command' )
+@YouCompleteMeInstance()
+def EventNotification_FileReadyToParse_NonDiagnostic_Error_NonNative_test(
+    ycm, vim_command ):
+
+  with MockArbitraryBuffer( 'javascript' ):
+    with MockEventNotification( None, False ):
+      ycm.OnFileReadyToParse()
+      ycm.HandleFileParseRequest()
+      vim_command.assert_not_called()
+
+
+@patch( 'ycm.client.event_notification._LoadExtraConfFile',
+        new_callable = ExtendedMock )
+@patch( 'ycm.client.event_notification._IgnoreExtraConfFile',
+        new_callable = ExtendedMock )
+@YouCompleteMeInstance()
+def EventNotification_FileReadyToParse_NonDiagnostic_ConfirmExtraConf_test(
+    ycm, ignore_extra_conf, load_extra_conf ):
+
+  # This test validates the behaviour of YouCompleteMe.HandleFileParseRequest
+  # in combination with YouCompleteMe.OnFileReadyToParse when the completer
+  # raises the (special) UnknownExtraConf exception
+
+  FILE_NAME = 'a_file'
+  MESSAGE = ( 'Found ' + FILE_NAME + '. Load? \n\n(Question can be '
+              'turned off with options, see YCM docs)' )
+
+  def UnknownExtraConfResponse( *args ):
+    raise UnknownExtraConf( FILE_NAME )
+
+  with MockArbitraryBuffer( 'javascript' ):
+    with MockEventNotification( UnknownExtraConfResponse ):
+
+      # When the user accepts the extra conf, we load it
+      with patch( 'ycm.vimsupport.PresentDialog',
+                  return_value = 0,
+                  new_callable = ExtendedMock ) as present_dialog:
+        ycm.OnFileReadyToParse()
+        ok_( ycm.FileParseRequestReady() )
+        ycm.HandleFileParseRequest()
+
+        present_dialog.assert_has_exact_calls( [
+          PresentDialog_Confirm_Call( MESSAGE ),
+        ] )
+        load_extra_conf.assert_has_exact_calls( [
+          call( FILE_NAME ),
         ] )
 
         # Subsequent calls don't re-raise the warning
-        self._server_state.HandleFileParseRequest()
-        post_vim_message.assert_has_exact_calls( [
-          call( ERROR_TEXT, truncate = False )
+        ycm.HandleFileParseRequest()
+
+        present_dialog.assert_has_exact_calls( [
+          PresentDialog_Confirm_Call( MESSAGE )
+        ] )
+        load_extra_conf.assert_has_exact_calls( [
+          call( FILE_NAME ),
         ] )
 
         # But it does if a subsequent event raises again
-        self._server_state.OnFileReadyToParse()
-        assert self._server_state.FileParseRequestReady()
-        self._server_state.HandleFileParseRequest()
-        post_vim_message.assert_has_exact_calls( [
-          call( ERROR_TEXT, truncate = False ),
-          call( ERROR_TEXT, truncate = False )
+        ycm.OnFileReadyToParse()
+        ok_( ycm.FileParseRequestReady() )
+        ycm.HandleFileParseRequest()
+
+        present_dialog.assert_has_exact_calls( [
+          PresentDialog_Confirm_Call( MESSAGE ),
+          PresentDialog_Confirm_Call( MESSAGE ),
+        ] )
+        load_extra_conf.assert_has_exact_calls( [
+          call( FILE_NAME ),
+          call( FILE_NAME ),
+        ] )
+
+      # When the user rejects the extra conf, we reject it
+      with patch( 'ycm.vimsupport.PresentDialog',
+                  return_value = 1,
+                  new_callable = ExtendedMock ) as present_dialog:
+        ycm.OnFileReadyToParse()
+        ok_( ycm.FileParseRequestReady() )
+        ycm.HandleFileParseRequest()
+
+        present_dialog.assert_has_exact_calls( [
+          PresentDialog_Confirm_Call( MESSAGE ),
+        ] )
+        ignore_extra_conf.assert_has_exact_calls( [
+          call( FILE_NAME ),
+        ] )
+
+        # Subsequent calls don't re-raise the warning
+        ycm.HandleFileParseRequest()
+
+        present_dialog.assert_has_exact_calls( [
+          PresentDialog_Confirm_Call( MESSAGE )
+        ] )
+        ignore_extra_conf.assert_has_exact_calls( [
+          call( FILE_NAME ),
+        ] )
+
+        # But it does if a subsequent event raises again
+        ycm.OnFileReadyToParse()
+        ok_( ycm.FileParseRequestReady() )
+        ycm.HandleFileParseRequest()
+
+        present_dialog.assert_has_exact_calls( [
+          PresentDialog_Confirm_Call( MESSAGE ),
+          PresentDialog_Confirm_Call( MESSAGE ),
+        ] )
+        ignore_extra_conf.assert_has_exact_calls( [
+          call( FILE_NAME ),
+          call( FILE_NAME ),
         ] )
 
 
-  @patch( 'vim.command' )
-  def FileReadyToParse_NonDiagnostic_Error_NonNative_test( self, vim_command ):
-    with MockArbitraryBuffer( 'javascript' ):
-      with MockEventNotification( None, False ):
-        self._server_state.OnFileReadyToParse()
-        self._server_state.HandleFileParseRequest()
-        vim_command.assert_not_called()
+@YouCompleteMeInstance()
+def EventNotification_FileReadyToParse_Diagnostic_Error_Native_test( ycm ):
+  _Check_FileReadyToParse_Diagnostic_Error( ycm )
+  _Check_FileReadyToParse_Diagnostic_Warning( ycm )
+  _Check_FileReadyToParse_Diagnostic_Clean( ycm )
 
 
-  @patch( 'ycm.client.event_notification._LoadExtraConfFile',
-          new_callable = ExtendedMock )
-  @patch( 'ycm.client.event_notification._IgnoreExtraConfFile',
-          new_callable = ExtendedMock )
-  def FileReadyToParse_NonDiagnostic_ConfirmExtraConf_test(
-      self,
-      ignore_extra_conf,
-      load_extra_conf,
-      *args ):
+@patch( 'vim.command' )
+def _Check_FileReadyToParse_Diagnostic_Error( ycm, vim_command ):
+  # Tests Vim sign placement and error/warning count python API
+  # when one error is returned.
+  def DiagnosticResponse( *args ):
+    start = Location( 1, 2, 'TEST_BUFFER' )
+    end = Location( 1, 4, 'TEST_BUFFER' )
+    extent = Range( start, end )
+    diagnostic = Diagnostic( [], start, extent, 'expected ;', 'ERROR' )
+    return [ BuildDiagnosticData( diagnostic ) ]
 
-    # This test validates the behaviour of YouCompleteMe.HandleFileParseRequest
-    # in combination with YouCompleteMe.OnFileReadyToParse when the completer
-    # raises the (special) UnknownExtraConf exception
+  with MockArbitraryBuffer( 'cpp' ):
+    with MockEventNotification( DiagnosticResponse ):
+      ycm.OnFileReadyToParse()
+      ok_( ycm.FileParseRequestReady() )
+      ycm.HandleFileParseRequest()
+      vim_command.assert_has_calls( [
+        PlaceSign_Call( 1, 1, 1, True )
+      ] )
+      eq_( ycm.GetErrorCount(), 1 )
+      eq_( ycm.GetWarningCount(), 0 )
 
-    FILE_NAME = 'a_file'
-    MESSAGE = ( 'Found ' + FILE_NAME + '. Load? \n\n(Question can be '
-                'turned off with options, see YCM docs)' )
-
-    def UnknownExtraConfResponse( *args ):
-      raise UnknownExtraConf( FILE_NAME )
-
-    with MockArbitraryBuffer( 'javascript' ):
-      with MockEventNotification( UnknownExtraConfResponse ):
-
-        # When the user accepts the extra conf, we load it
-        with patch( 'ycm.vimsupport.PresentDialog',
-                    return_value = 0,
-                    new_callable = ExtendedMock ) as present_dialog:
-          self._server_state.OnFileReadyToParse()
-          assert self._server_state.FileParseRequestReady()
-          self._server_state.HandleFileParseRequest()
-
-          present_dialog.assert_has_exact_calls( [
-            PresentDialog_Confirm_Call( MESSAGE ),
-          ] )
-          load_extra_conf.assert_has_exact_calls( [
-            call( FILE_NAME ),
-          ] )
-
-          # Subsequent calls don't re-raise the warning
-          self._server_state.HandleFileParseRequest()
-
-          present_dialog.assert_has_exact_calls( [
-            PresentDialog_Confirm_Call( MESSAGE )
-          ] )
-          load_extra_conf.assert_has_exact_calls( [
-            call( FILE_NAME ),
-          ] )
-
-          # But it does if a subsequent event raises again
-          self._server_state.OnFileReadyToParse()
-          assert self._server_state.FileParseRequestReady()
-          self._server_state.HandleFileParseRequest()
-
-          present_dialog.assert_has_exact_calls( [
-            PresentDialog_Confirm_Call( MESSAGE ),
-            PresentDialog_Confirm_Call( MESSAGE ),
-          ] )
-          load_extra_conf.assert_has_exact_calls( [
-            call( FILE_NAME ),
-            call( FILE_NAME ),
-          ] )
-
-        # When the user rejects the extra conf, we reject it
-        with patch( 'ycm.vimsupport.PresentDialog',
-                    return_value = 1,
-                    new_callable = ExtendedMock ) as present_dialog:
-          self._server_state.OnFileReadyToParse()
-          assert self._server_state.FileParseRequestReady()
-          self._server_state.HandleFileParseRequest()
-
-          present_dialog.assert_has_exact_calls( [
-            PresentDialog_Confirm_Call( MESSAGE ),
-          ] )
-          ignore_extra_conf.assert_has_exact_calls( [
-            call( FILE_NAME ),
-          ] )
-
-          # Subsequent calls don't re-raise the warning
-          self._server_state.HandleFileParseRequest()
-
-          present_dialog.assert_has_exact_calls( [
-            PresentDialog_Confirm_Call( MESSAGE )
-          ] )
-          ignore_extra_conf.assert_has_exact_calls( [
-            call( FILE_NAME ),
-          ] )
-
-          # But it does if a subsequent event raises again
-          self._server_state.OnFileReadyToParse()
-          assert self._server_state.FileParseRequestReady()
-          self._server_state.HandleFileParseRequest()
-
-          present_dialog.assert_has_exact_calls( [
-            PresentDialog_Confirm_Call( MESSAGE ),
-            PresentDialog_Confirm_Call( MESSAGE ),
-          ] )
-          ignore_extra_conf.assert_has_exact_calls( [
-            call( FILE_NAME ),
-            call( FILE_NAME ),
-          ] )
+      # Consequent calls to HandleFileParseRequest shouldn't mess with
+      # existing diagnostics, when there is no new parse request.
+      vim_command.reset_mock()
+      ok_( not ycm.FileParseRequestReady() )
+      ycm.HandleFileParseRequest()
+      vim_command.assert_not_called()
+      eq_( ycm.GetErrorCount(), 1 )
+      eq_( ycm.GetWarningCount(), 0 )
 
 
-  def FileReadyToParse_Diagnostic_Error_Native_test( self ):
-    self._Check_FileReadyToParse_Diagnostic_Error()
-    self._Check_FileReadyToParse_Diagnostic_Warning()
-    self._Check_FileReadyToParse_Diagnostic_Clean()
+@patch( 'vim.command' )
+def _Check_FileReadyToParse_Diagnostic_Warning( ycm, vim_command ):
+  # Tests Vim sign placement/unplacement and error/warning count python API
+  # when one warning is returned.
+  # Should be called after _Check_FileReadyToParse_Diagnostic_Error
+  def DiagnosticResponse( *args ):
+    start = Location( 2, 2, 'TEST_BUFFER' )
+    end = Location( 2, 4, 'TEST_BUFFER' )
+    extent = Range( start, end )
+    diagnostic = Diagnostic( [], start, extent, 'cast', 'WARNING' )
+    return [ BuildDiagnosticData( diagnostic ) ]
+
+  with MockArbitraryBuffer( 'cpp' ):
+    with MockEventNotification( DiagnosticResponse ):
+      ycm.OnFileReadyToParse()
+      ok_( ycm.FileParseRequestReady() )
+      ycm.HandleFileParseRequest()
+      vim_command.assert_has_calls( [
+        PlaceSign_Call( 2, 2, 1, False ),
+        UnplaceSign_Call( 1, 1 )
+      ] )
+      eq_( ycm.GetErrorCount(), 0 )
+      eq_( ycm.GetWarningCount(), 1 )
+
+      # Consequent calls to HandleFileParseRequest shouldn't mess with
+      # existing diagnostics, when there is no new parse request.
+      vim_command.reset_mock()
+      ok_( not ycm.FileParseRequestReady() )
+      ycm.HandleFileParseRequest()
+      vim_command.assert_not_called()
+      eq_( ycm.GetErrorCount(), 0 )
+      eq_( ycm.GetWarningCount(), 1 )
 
 
-  @patch( 'vim.command' )
-  def _Check_FileReadyToParse_Diagnostic_Error( self, vim_command ):
-    # Tests Vim sign placement and error/warning count python API
-    # when one error is returned.
-    def DiagnosticResponse( *args ):
-      start = Location( 1, 2, 'TEST_BUFFER' )
-      end = Location( 1, 4, 'TEST_BUFFER' )
-      extent = Range( start, end )
-      diagnostic = Diagnostic( [], start, extent, 'expected ;', 'ERROR' )
-      return [ BuildDiagnosticData( diagnostic ) ]
-
-    with MockArbitraryBuffer( 'cpp' ):
-      with MockEventNotification( DiagnosticResponse ):
-        self._server_state.OnFileReadyToParse()
-        ok_( self._server_state.FileParseRequestReady() )
-        self._server_state.HandleFileParseRequest()
-        vim_command.assert_has_calls( [
-          PlaceSign_Call( 1, 1, 0, True )
-        ] )
-        eq_( self._server_state.GetErrorCount(), 1 )
-        eq_( self._server_state.GetWarningCount(), 0 )
-
-        # Consequent calls to HandleFileParseRequest shouldn't mess with
-        # existing diagnostics, when there is no new parse request.
-        vim_command.reset_mock()
-        ok_( not self._server_state.FileParseRequestReady() )
-        self._server_state.HandleFileParseRequest()
-        vim_command.assert_not_called()
-        eq_( self._server_state.GetErrorCount(), 1 )
-        eq_( self._server_state.GetWarningCount(), 0 )
+@patch( 'vim.command' )
+def _Check_FileReadyToParse_Diagnostic_Clean( ycm, vim_command ):
+  # Tests Vim sign unplacement and error/warning count python API
+  # when there are no errors/warnings left.
+  # Should be called after _Check_FileReadyToParse_Diagnostic_Warning
+  with MockArbitraryBuffer( 'cpp' ):
+    with MockEventNotification( MagicMock( return_value = [] ) ):
+      ycm.OnFileReadyToParse()
+      ycm.HandleFileParseRequest()
+      vim_command.assert_has_calls( [
+        UnplaceSign_Call( 2, 1 )
+      ] )
+      eq_( ycm.GetErrorCount(), 0 )
+      eq_( ycm.GetWarningCount(), 0 )
 
 
-  @patch( 'vim.command' )
-  def _Check_FileReadyToParse_Diagnostic_Warning( self, vim_command ):
-    # Tests Vim sign placement/unplacement and error/warning count python API
-    # when one warning is returned.
-    # Should be called after _Check_FileReadyToParse_Diagnostic_Error
-    def DiagnosticResponse( *args ):
-      start = Location( 2, 2, 'TEST_BUFFER' )
-      end = Location( 2, 4, 'TEST_BUFFER' )
-      extent = Range( start, end )
-      diagnostic = Diagnostic( [], start, extent, 'cast', 'WARNING' )
-      return [ BuildDiagnosticData( diagnostic ) ]
+@patch( 'ycm.youcompleteme.YouCompleteMe._AddUltiSnipsDataIfNeeded' )
+@YouCompleteMeInstance()
+def EventNotification_BufferVisit_BuildRequestForCurrentAndUnsavedBuffers_test(
+    ycm, *args ):
 
-    with MockArbitraryBuffer( 'cpp' ):
-      with MockEventNotification( DiagnosticResponse ):
-        self._server_state.OnFileReadyToParse()
-        ok_( self._server_state.FileParseRequestReady() )
-        self._server_state.HandleFileParseRequest()
-        vim_command.assert_has_calls( [
-          PlaceSign_Call( 2, 2, 0, False ),
-          UnplaceSign_Call( 1, 0 )
-        ] )
-        eq_( self._server_state.GetErrorCount(), 0 )
-        eq_( self._server_state.GetWarningCount(), 1 )
+  current_buffer_file = os.path.realpath( 'current_buffer' )
+  current_buffer = VimBuffer( name = current_buffer_file,
+                              number = 1,
+                              contents = [ 'current_buffer_contents' ],
+                              filetype = 'some_filetype',
+                              modified = False )
 
-        # Consequent calls to HandleFileParseRequest shouldn't mess with
-        # existing diagnostics, when there is no new parse request.
-        vim_command.reset_mock()
-        ok_( not self._server_state.FileParseRequestReady() )
-        self._server_state.HandleFileParseRequest()
-        vim_command.assert_not_called()
-        eq_( self._server_state.GetErrorCount(), 0 )
-        eq_( self._server_state.GetWarningCount(), 1 )
+  modified_buffer_file = os.path.realpath( 'modified_buffer' )
+  modified_buffer = VimBuffer( name = modified_buffer_file,
+                               number = 2,
+                               contents = [ 'modified_buffer_contents' ],
+                               filetype = 'some_filetype',
+                               modified = True )
+
+  unmodified_buffer_file = os.path.realpath( 'unmodified_buffer' )
+  unmodified_buffer = VimBuffer( name = unmodified_buffer_file,
+                                 number = 3,
+                                 contents = [ 'unmodified_buffer_contents' ],
+                                 filetype = 'some_filetype',
+                                 modified = False )
+
+  with patch( 'ycm.client.base_request.BaseRequest.'
+              'PostDataToHandlerAsync' ) as post_data_to_handler_async:
+    with patch( 'vim.buffers', [ current_buffer,
+                                 modified_buffer,
+                                 unmodified_buffer ] ):
+      with patch( 'vim.current.buffer', current_buffer ):
+        with patch( 'vim.current.window.cursor', ( 3, 5 ) ):
+          ycm.OnBufferVisit()
+
+    assert_that(
+      # Positional arguments passed to PostDataToHandlerAsync.
+      post_data_to_handler_async.call_args[ 0 ],
+      contains(
+        has_entries( {
+          'filepath': current_buffer_file,
+          'line_num': 3,
+          'column_num': 6,
+          'file_data': has_entries( {
+            current_buffer_file: has_entries( {
+              'contents': 'current_buffer_contents\n',
+              'filetypes': [ 'some_filetype' ]
+            } ),
+            modified_buffer_file: has_entries( {
+              'contents': 'modified_buffer_contents\n',
+              'filetypes': [ 'some_filetype' ]
+            } )
+          } ),
+          'event_name': 'BufferVisit'
+        } ),
+        'event_notification'
+      )
+    )
 
 
-  @patch( 'vim.command' )
-  def _Check_FileReadyToParse_Diagnostic_Clean( self, vim_command ):
-    # Tests Vim sign unplacement and error/warning count python API
-    # when there are no errors/warnings left.
-    # Should be called after _Check_FileReadyToParse_Diagnostic_Warning
-    with MockArbitraryBuffer( 'cpp' ):
-      with MockEventNotification( MagicMock( return_value = [] ) ):
-        self._server_state.OnFileReadyToParse()
-        self._server_state.HandleFileParseRequest()
-        vim_command.assert_has_calls( [
-          UnplaceSign_Call( 2, 0 )
-        ] )
-        eq_( self._server_state.GetErrorCount(), 0 )
-        eq_( self._server_state.GetWarningCount(), 0 )
+@YouCompleteMeInstance()
+def EventNotification_BufferUnload_BuildRequestForDeletedAndUnsavedBuffers_test(
+    ycm ):
+  current_buffer_file = os.path.realpath( 'current_buffer' )
+  current_buffer = VimBuffer( name = current_buffer_file,
+                              number = 1,
+                              contents = [ 'current_buffer_contents' ],
+                              filetype = 'some_filetype',
+                              modified = True )
+
+  deleted_buffer_file = os.path.realpath( 'deleted_buffer' )
+  deleted_buffer = VimBuffer( name = deleted_buffer_file,
+                              number = 2,
+                              contents = [ 'deleted_buffer_contents' ],
+                              filetype = 'some_filetype',
+                              modified = False )
+
+  with patch( 'ycm.client.base_request.BaseRequest.'
+              'PostDataToHandlerAsync' ) as post_data_to_handler_async:
+    with patch( 'vim.buffers', [ current_buffer, deleted_buffer ] ):
+      with patch( 'vim.current.buffer', current_buffer ):
+        ycm.OnBufferUnload( deleted_buffer_file )
+
+  assert_that(
+    # Positional arguments passed to PostDataToHandlerAsync.
+    post_data_to_handler_async.call_args[ 0 ],
+    contains(
+      has_entries( {
+        'filepath': deleted_buffer_file,
+        'line_num': 1,
+        'column_num': 1,
+        'file_data': has_entries( {
+          current_buffer_file: has_entries( {
+            'contents': 'current_buffer_contents\n',
+            'filetypes': [ 'some_filetype' ]
+          } ),
+          deleted_buffer_file: has_entries( {
+            'contents': 'deleted_buffer_contents\n',
+            'filetypes': [ 'some_filetype' ]
+          } )
+        } ),
+        'event_name': 'BufferUnload'
+      } ),
+      'event_notification'
+    )
+  )
