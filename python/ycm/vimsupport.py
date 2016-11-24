@@ -1,4 +1,5 @@
-# Copyright (C) 2011, 2012  Google Inc.
+# Copyright (C) 2011-2012 Google Inc.
+#               2016      YouCompleteMe contributors
 #
 # This file is part of YouCompleteMe.
 #
@@ -26,11 +27,11 @@ from builtins import *  # noqa
 from future.utils import iterkeys
 import vim
 import os
-import tempfile
 import json
 import re
 from collections import defaultdict
-from ycmd.utils import ToUnicode, ToBytes, JoinLinesAsUnicode
+from ycmd.utils import ( GetCurrentDirectory, JoinLinesAsUnicode, ToBytes,
+                         ToUnicode )
 from ycmd import user_options_store
 
 BUFFER_COMMAND_MAP = { 'same-buffer'      : 'edit',
@@ -195,13 +196,8 @@ def GetBufferFilepath( buffer_object ):
   if buffer_object.name:
     return buffer_object.name
   # Buffers that have just been created by a command like :enew don't have any
-  # buffer name so we use the buffer number for that. Also, os.getcwd() throws
-  # an exception when the CWD has been deleted so we handle that.
-  try:
-    folder_path = os.getcwd()
-  except OSError:
-    folder_path = tempfile.gettempdir()
-  return os.path.join( folder_path, str( buffer_object.number ) )
+  # buffer name so we use the buffer number for that.
+  return os.path.join( GetCurrentDirectory(), str( buffer_object.number ) )
 
 
 def UnplaceSignInBuffer( buffer_number, sign_id ):
@@ -889,21 +885,26 @@ def InsertNamespace( namespace ):
       return
 
   pattern = '^\s*using\(\s\+[a-zA-Z0-9]\+\s\+=\)\?\s\+[a-zA-Z0-9.]\+\s*;\s*'
+  existing_indent = ''
   line = SearchInCurrentBuffer( pattern )
-  existing_line = LineTextInCurrentBuffer( line )
-  existing_indent = re.sub( r"\S.*", "", existing_line )
+  if line:
+    existing_line = LineTextInCurrentBuffer( line )
+    existing_indent = re.sub( r"\S.*", "", existing_line )
   new_line = "{0}using {1};\n\n".format( existing_indent, namespace )
   replace_pos = { 'line_num': line + 1, 'column_num': 1 }
-  ReplaceChunk( replace_pos, replace_pos, new_line, 0, 0 )
+  ReplaceChunk( replace_pos, replace_pos, new_line, 0, 0, vim.current.buffer )
   PostVimMessage( 'Add namespace: {0}'.format( namespace ), warning = False )
 
 
 def SearchInCurrentBuffer( pattern ):
+  """ Returns the 1-indexed line on which the pattern matches
+  (going UP from the current position) or 0 if not found """
   return GetIntValue( "search('{0}', 'Wcnb')".format( EscapeForVim( pattern )))
 
 
-def LineTextInCurrentBuffer( line ):
-  return vim.current.buffer[ line ]
+def LineTextInCurrentBuffer( line_number ):
+  """ Returns the text on the 1-indexed line (NOT 0-indexed) """
+  return vim.current.buffer[ line_number - 1 ]
 
 
 def ClosePreviewWindow():
@@ -957,6 +958,8 @@ def WriteToPreviewWindow( message ):
     vim.current.buffer[:] = message.splitlines()
 
     vim.current.buffer.options[ 'buftype' ]    = 'nofile'
+    vim.current.buffer.options[ 'bufhidden' ]  = 'wipe'
+    vim.current.buffer.options[ 'buflisted' ]  = False
     vim.current.buffer.options[ 'swapfile' ]   = False
     vim.current.buffer.options[ 'modifiable' ] = False
     vim.current.buffer.options[ 'readonly' ]   = True

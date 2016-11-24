@@ -1,6 +1,7 @@
 YouCompleteMe: a code-completion engine for Vim
 ===============================================
 
+[![Gitter Room](https://img.shields.io/gitter/room/Valloric/YouCompleteMe.svg)](https://gitter.im/Valloric/YouCompleteMe)
 [![Build Status](https://travis-ci.org/Valloric/YouCompleteMe.svg?branch=master)](https://travis-ci.org/Valloric/YouCompleteMe)
 [![Build status](https://ci.appveyor.com/api/projects/status/ag9uqwi8s6btwjd8/branch/master?svg=true)](https://ci.appveyor.com/project/Valloric/YouCompleteMe)
 [![Coverage Status](https://codecov.io/gh/Valloric/YouCompleteMe/branch/master/graph/badge.svg)](https://codecov.io/gh/Valloric/YouCompleteMe)
@@ -526,10 +527,10 @@ process.
     **Download the latest version of `libclang`**. Clang is an open-source
     compiler that can compile C/C++/Objective-C/Objective-C++. The `libclang`
     library it provides is used to power the YCM semantic completion engine for
-    those languages. YCM is designed to work with libclang version 3.8 or
+    those languages. YCM is designed to work with libclang version 3.9 or
     higher.
 
-    You can use the system libclang _only if you are sure it is version 3.8 or
+    You can use the system libclang _only if you are sure it is version 3.9 or
     higher_, otherwise don't. Even if it is, we recommend using the [official
     binaries from llvm.org][clang-download] if at all possible. Make sure you
     download the correct archive file for your OS.
@@ -732,6 +733,7 @@ Quick Feature Summary
 * Go to definition (`GoTo`, `GoToDefinition`, and `GoToDeclaration` are
   identical)
 * Management of `racer` server instance
+* View documentation comments for identifiers (`GetDoc`)
 
 User Guide
 ----------
@@ -1363,7 +1365,7 @@ under the cursor. Depending on the file type, this includes things like:
 * etc.
 
 Supported in filetypes: `c, cpp, objc, objcpp, cs, python, typescript,
-javascript`
+javascript, rust`
 
 #### The `GetDocImprecise` subcommand
 
@@ -1801,6 +1803,39 @@ Default: `1`
 
 ```viml
 let g:ycm_echo_current_diagnostic = 1
+```
+
+### The `g:ycm_filter_diagnostics` option
+
+This option controls which diagnostics will be rendered by YCM. This option
+holds a dictionary of key-values, where the keys are Vim's filetype strings
+delimited by commas and values are dictionaries describing the filter.
+
+A filter is a dictionary of key-values, where the keys are the type of filter,
+and the value is a list of arguments to that filter. In the case of just a
+single item in the list, you may omit the brackets and just provide the argument
+directly. If any filter matches a diagnostic, it will be dropped and YCM will 
+not render it.
+
+The following filter types are supported:
+
+- "regex": Accepts a string [regular expression][python-re]. This type matches
+when the regex (treated as case-insensitive) is found in the diagnostic text.
+- "level": Accepts a string level, either "warning" or "error." This type 
+matches when the diagnostic has the same level.
+
+NOTE: The regex syntax is **NOT** Vim's, it's [Python's][python-re].
+
+Default: `{}`
+
+```viml
+let g:ycm_filter_diagnostics = {
+  \ "java": {
+  \      "regex": [ ".*taco.*", ... ],
+  \      "level": "error",
+  \      ...
+  \    }
+  \ }
 ```
 
 ### The `g:ycm_always_populate_location_list` option
@@ -2586,7 +2621,7 @@ undefined symbol: clang_CompileCommands_dispose
 ```
 
 This means that Vim is trying to load a `libclang.so` that is too old. You need
-at least a 3.8 libclang. Just go through the installation guide and make sure
+at least a 3.9 libclang. Just go through the installation guide and make sure
 you are using a correct `libclang.so`. We recommend downloading prebuilt
 binaries from llvm.org.
 
@@ -2860,8 +2895,8 @@ terms.
 Contact
 -------
 
-If you have questions about the plugin or need help, please use the
-[ycm-users][] mailing list.
+If you have questions about the plugin or need help, please join the [Gitter
+room][gitter] or use the [ycm-users][] mailing list.
 
 If you have bug reports or feature suggestions, please use the [issue
 tracker][tracker].
@@ -2941,3 +2976,4 @@ This software is licensed under the [GPL v3 license][gpl].
 [JediHTTP]: https://github.com/vheon/JediHTTP
 [vim_win-python2.7.11-bug]: https://github.com/vim/vim/issues/717
 [vim_win-python2.7.11-bug_workaround]: https://github.com/vim/vim-win32-installer/blob/master/appveyor.bat#L90
+[gitter]: https://gitter.im/Valloric/YouCompleteMe

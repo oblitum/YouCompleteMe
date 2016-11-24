@@ -1,3 +1,5 @@
+# coding: utf-8
+#
 # Copyright (C) 2016 YouCompleteMe contributors
 #
 # This file is part of YouCompleteMe.
@@ -23,28 +25,30 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import *  # noqa
 
-from requests.exceptions import ReadTimeout
+from ycm.tests.test_utils import ( CurrentWorkingDirectory, MockVimModule,
+                                   MockVimBuffers, VimBuffer )
+MockVimModule()
 
-from ycm.client.base_request import BaseRequest
+from hamcrest import assert_that, empty, has_entries
 
-TIMEOUT_SECONDS = 0.1
-
-
-class ShutdownRequest( BaseRequest ):
-  def __init__( self ):
-    super( BaseRequest, self ).__init__()
+from ycm.tests import PathToTestFile, YouCompleteMeInstance
 
 
-  def Start( self ):
-    try:
-      self.PostDataToHandler( {},
-                              'shutdown',
-                              TIMEOUT_SECONDS )
-    except ReadTimeout:
-      pass
+@YouCompleteMeInstance()
+def CreateCompletionRequest_UnicodeWorkingDirectory_test( ycm ):
+  unicode_dir = PathToTestFile( 'uni¢𐍈d€' )
+  current_buffer = VimBuffer( PathToTestFile( 'uni¢𐍈d€', 'current_buffer' ) )
 
+  with CurrentWorkingDirectory( unicode_dir ):
+    with MockVimBuffers( [ current_buffer ], current_buffer, ( 5, 2 ) ):
+      ycm.CreateCompletionRequest(),
 
-def SendShutdownRequest():
-  request = ShutdownRequest()
-  # This is a blocking call.
-  request.Start()
+    results = ycm.GetCompletions()
+
+  assert_that(
+    results,
+    has_entries( {
+      'words': empty(),
+      'refresh': 'always'
+    } )
+  )
