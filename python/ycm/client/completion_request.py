@@ -23,13 +23,10 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import *  # noqa
 
-from requests.exceptions import ReadTimeout
-
 from ycmd.utils import ToUnicode
 from ycm.client.base_request import ( BaseRequest, JsonFromFuture,
                                       HandleServerException,
                                       MakeServerException )
-from ycmd.responses import ServerError
 
 TIMEOUT_SECONDS = 3.0
 
@@ -38,6 +35,7 @@ class CompletionRequest( BaseRequest ):
   def __init__( self, request_data ):
     super( CompletionRequest, self ).__init__()
     self.request_data = request_data
+    self._response_future = None
 
 
   def Start( self ):
@@ -47,22 +45,21 @@ class CompletionRequest( BaseRequest ):
 
 
   def Done( self ):
-    return self._response_future.done()
+    return bool( self._response_future ) and self._response_future.done()
 
 
   def RawResponse( self ):
     if not self._response_future:
       return []
-    try:
+    with HandleServerException( truncate = True ):
       response = JsonFromFuture( self._response_future )
 
       errors = response[ 'errors' ] if 'errors' in response else []
       for e in errors:
-        HandleServerException( MakeServerException( e ) )
+        with HandleServerException( truncate = True ):
+          raise MakeServerException( e )
 
-      return JsonFromFuture( self._response_future )[ 'completions' ]
-    except ( ServerError, ReadTimeout ) as e:
-      HandleServerException( e, truncate = True )
+      return response[ 'completions' ]
     return []
 
 

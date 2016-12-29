@@ -80,11 +80,13 @@ let g:ycm_key_detailed_diagnostics =
 let g:ycm_cache_omnifunc =
       \ get( g:, 'ycm_cache_omnifunc', 1 )
 
-let g:ycm_server_log_level =
-      \ get( g:, 'ycm_server_log_level', 'info' )
+let g:ycm_log_level =
+      \ get( g:, 'ycm_log_level',
+      \ get( g:, 'ycm_server_log_level', 'info' ) )
 
-let g:ycm_server_keep_logfiles =
-      \ get( g:, 'ycm_server_keep_logfiles', 0 )
+let g:ycm_keep_logfiles =
+      \ get( g:, 'ycm_keep_logfiles',
+      \ get( g:, 'ycm_server_keep_logfiles', 0 ) )
 
 let g:ycm_extra_conf_vim_data =
       \ get( g:, 'ycm_extra_conf_vim_data', [] )
@@ -94,8 +96,7 @@ let g:ycm_server_python_interpreter =
       \ get( g:, 'ycm_path_to_python_interpreter', '' ) )
 
 let g:ycm_show_diagnostics_ui =
-      \ get( g:, 'ycm_show_diagnostics_ui',
-      \ get( g:, 'ycm_register_as_syntastic_checker', 1 ) )
+      \ get( g:, 'ycm_show_diagnostics_ui', 1 )
 
 let g:ycm_enable_diagnostic_signs =
       \ get( g:, 'ycm_enable_diagnostic_signs',
