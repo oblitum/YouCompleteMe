@@ -157,7 +157,7 @@ class BaseRequest( object ):
   hmac_secret = ''
 
 
-def BuildRequestData( filepath = None ):
+def BuildRequestData( filepath = None, SnapToTrigger = False ):
   """Build request for the current buffer or the buffer corresponding to
   |filepath| if specified."""
   current_filepath = vimsupport.GetCurrentBufferFilepath()
@@ -171,7 +171,9 @@ def BuildRequestData( filepath = None ):
       'file_data': vimsupport.GetUnsavedAndSpecifiedBufferData( filepath )
     }
 
-  line, column = vimsupport.SnappedLineAndColumn()
+  line, column = ( vimsupport.SnappedLineAndColumn()
+      if SnapToTrigger
+      else vimsupport.CurrentLineAndColumn() )
 
   return {
     'filepath': current_filepath,

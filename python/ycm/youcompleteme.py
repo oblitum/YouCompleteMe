@@ -264,7 +264,7 @@ class YouCompleteMe( object ):
 
 
   def CreateCompletionRequest( self, force_semantic = False ):
-    request_data = BuildRequestData()
+    request_data = BuildRequestData( SnapToTrigger = True )
     if ( not self.NativeFiletypeCompletionAvailable() and
          self.CurrentFiletypeCompletionEnabled() ):
       wrapped_request_data = RequestWrap( request_data )
