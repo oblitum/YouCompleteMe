@@ -1,4 +1,4 @@
-# Copyright (C) 2016 YouCompleteMe contributors
+# Copyright (C) 2016-2017 YouCompleteMe contributors
 #
 # This file is part of YouCompleteMe.
 #
@@ -23,7 +23,6 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import *  # noqa
 
-from ycm.tests import StopServer
 from ycm.tests.test_utils import ( ExtendedMock, MockVimBuffers, MockVimModule,
                                    VimBuffer )
 MockVimModule()
@@ -34,7 +33,7 @@ from hamcrest import ( assert_that, contains, empty, is_in, is_not, has_length,
                        matches_regexp )
 from mock import call, MagicMock, patch
 
-from ycm.tests import YouCompleteMeInstance
+from ycm.tests import StopServer, YouCompleteMeInstance
 from ycmd.responses import ServerError
 
 
@@ -149,8 +148,11 @@ def YouCompleteMe_DebugInfo_ServerRunning_test( ycm ):
       ycm.DebugInfo(),
       matches_regexp(
         'Client logfile: .+\n'
+        'Server Python interpreter: .+\n'
+        'Server Python version: .+\n'
         'Server has Clang support compiled in: (True|False)\n'
-        '(Clang version: .+\n)?'
+        'Clang version: .+\n'
+        'No extra configuration file found\n'
         'Server running at: .+\n'
         'Server process ID: \d+\n'
         'Server logfiles:\n'
@@ -169,7 +171,7 @@ def YouCompleteMe_DebugInfo_ServerNotRunning_test( ycm ):
       ycm.DebugInfo(),
       matches_regexp(
         'Client logfile: .+\n'
-        'Server crashed, no debug info from server\n'
+        'Server errored, no debug info from server\n'
         'Server running at: .+\n'
         'Server process ID: \d+\n'
         'Server logfiles:\n'
@@ -225,13 +227,19 @@ def YouCompleteMe_ToggleLogs_WithParameters_test( ycm,
 @YouCompleteMeInstance()
 @patch( 'ycm.vimsupport.PostVimMessage' )
 def YouCompleteMe_ToggleLogs_WithoutParameters_test( ycm, post_vim_message ):
-  ycm.ToggleLogs()
+  # We test on a Python buffer because the Python completer has subserver
+  # logfiles.
+  python_buffer = VimBuffer( 'buffer.py', filetype = 'python' )
+  with MockVimBuffers( [ python_buffer ], python_buffer ):
+    ycm.ToggleLogs()
 
   assert_that(
     # Argument passed to PostVimMessage.
     post_vim_message.call_args[ 0 ][ 0 ],
     matches_regexp(
       'Available logfiles are:\n'
+      'jedihttp_\d+_stderr_.+.log\n'
+      'jedihttp_\d+_stdout_.+.log\n'
       'ycm_.+.log\n'
       'ycmd_\d+_stderr_.+.log\n'
       'ycmd_\d+_stdout_.+.log' )

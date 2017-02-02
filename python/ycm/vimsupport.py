@@ -1073,4 +1073,4 @@ def _SetUpLoadedBuffer( command, filename, fix, position, watch ):
                  .format( filename ) )
 
   if position == 'end':
-    vim.command( 'silent! normal G zz' )
+    vim.command( 'silent! normal! Gzz' )

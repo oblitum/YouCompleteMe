@@ -1,5 +1,5 @@
 # Copyright (C) 2011-2012 Google Inc.
-#               2016      YouCompleteMe contributors
+#               2016-2017 YouCompleteMe contributors
 #
 # This file is part of YouCompleteMe.
 #
@@ -48,7 +48,8 @@ from ycm.client.completer_available_request import SendCompleterAvailableRequest
 from ycm.client.command_request import SendCommandRequest
 from ycm.client.completion_request import ( CompletionRequest,
                                             ConvertCompletionDataToVimData )
-from ycm.client.debug_info_request import SendDebugInfoRequest
+from ycm.client.debug_info_request import ( SendDebugInfoRequest,
+                                            FormatDebugInfoResponse )
 from ycm.client.omni_completion_request import OmniCompletionRequest
 from ycm.client.event_notification import ( SendEventNotificationAsync,
                                             EventNotification )
@@ -253,8 +254,7 @@ class YouCompleteMe( object ):
 
 
   def _ShutdownServer( self ):
-    if self.IsServerAlive():
-      SendShutdownRequest()
+    SendShutdownRequest()
 
 
   def RestartServer( self ):
@@ -297,15 +297,13 @@ class YouCompleteMe( object ):
 
 
   def SendCommandRequest( self, arguments, completer ):
-    if self.IsServerAlive():
-      return SendCommandRequest( arguments, completer )
+    return SendCommandRequest( arguments, completer )
 
 
   def GetDefinedSubcommands( self ):
-    if self.IsServerAlive():
-      with HandleServerException():
-        return BaseRequest.PostDataToHandler( BuildRequestData(),
-                                              'defined_subcommands' )
+    with HandleServerException():
+      return BaseRequest.PostDataToHandler( BuildRequestData(),
+                                            'defined_subcommands' )
     return []
 
 
@@ -322,9 +320,6 @@ class YouCompleteMe( object ):
       return self._available_completers[ filetype ]
     except KeyError:
       pass
-
-    if not self.IsServerAlive():
-      return False
 
     exists_completer = SendCompleterAvailableRequest( filetype )
     if exists_completer is None:
@@ -362,22 +357,16 @@ class YouCompleteMe( object ):
 
 
   def OnBufferUnload( self, deleted_buffer_file ):
-    if not self.IsServerAlive():
-      return
     SendEventNotificationAsync( 'BufferUnload', filepath = deleted_buffer_file )
 
 
   def OnBufferVisit( self ):
-    if not self.IsServerAlive():
-      return
     extra_data = {}
     self._AddUltiSnipsDataIfNeeded( extra_data )
     SendEventNotificationAsync( 'BufferVisit', extra_data = extra_data )
 
 
   def OnInsertLeave( self ):
-    if not self.IsServerAlive():
-      return
     SendEventNotificationAsync( 'InsertLeave' )
 
 
@@ -398,8 +387,6 @@ class YouCompleteMe( object ):
 
 
   def OnCurrentIdentifierFinished( self ):
-    if not self.IsServerAlive():
-      return
     SendEventNotificationAsync( 'CurrentIdentifierFinished' )
 
 
@@ -632,8 +619,6 @@ class YouCompleteMe( object ):
 
 
   def ShowDetailedDiagnostic( self ):
-    if not self.IsServerAlive():
-      return
     with HandleServerException():
       detailed_diagnostic = BaseRequest.PostDataToHandler(
           BuildRequestData(), 'detailed_diagnostic' )
@@ -647,14 +632,12 @@ class YouCompleteMe( object ):
     debug_info = ''
     if self._client_logfile:
       debug_info += 'Client logfile: {0}\n'.format( self._client_logfile )
-    if self.IsServerAlive():
-      debug_info += SendDebugInfoRequest()
-    else:
-      debug_info += 'Server crashed, no debug info from server'
-    debug_info += '\nServer running at: {0}\n'.format(
-        BaseRequest.server_location )
-    debug_info += 'Server process ID: {0}\n'.format( self._server_popen.pid )
-    if self._server_stderr or self._server_stdout:
+    debug_info += FormatDebugInfoResponse( SendDebugInfoRequest() )
+    debug_info += (
+      'Server running at: {0}\n'
+      'Server process ID: {1}\n'.format( BaseRequest.server_location,
+                                         self._server_popen.pid ) )
+    if self._server_stdout and self._server_stderr:
       debug_info += ( 'Server logfiles:\n'
                       '  {0}\n'
                       '  {1}'.format( self._server_stdout,
@@ -666,6 +649,14 @@ class YouCompleteMe( object ):
     logfiles_list = [ self._client_logfile,
                       self._server_stdout,
                       self._server_stderr ]
+
+    debug_info = SendDebugInfoRequest()
+    if debug_info:
+      completer = debug_info[ 'completer' ]
+      if completer:
+        for server in completer[ 'servers' ]:
+          logfiles_list.extend( server[ 'logfiles' ] )
+
     logfiles = {}
     for logfile in logfiles_list:
       logfiles[ os.path.basename( logfile ) ] = logfile
