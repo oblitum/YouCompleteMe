@@ -228,10 +228,13 @@ using Vundle and the ycm_core library APIs have changed (happens
 rarely), YCM will notify you to recompile it. You should then rerun the install
 process.
 
-Install development tools and CMake: `sudo apt-get install build-essential cmake`
+Install development tools and CMake: 
 
-Make sure you have Python headers installed: `sudo apt-get install python-dev
-python3-dev`.
+    sudo apt-get install build-essential cmake
+
+Make sure you have Python headers installed:
+
+    sudo apt-get install python-dev python3-dev
 
 Compiling YCM **with** semantic support for C-family languages:
 
@@ -292,10 +295,13 @@ using Vundle and the ycm_core library APIs have changed (happens
 rarely), YCM will notify you to recompile it. You should then rerun the install
 process.
 
-Install development tools and CMake: `sudo dnf install automake gcc gcc-c++ kernel-devel cmake`
+Install development tools and CMake:
 
-Make sure you have Python headers installed: `sudo dnf install python-devel
-python3-devel`.
+    sudo dnf install automake gcc gcc-c++ kernel-devel cmake
+
+Make sure you have Python headers installed:
+
+    sudo dnf install python-devel python3-devel
 
 Compiling YCM **with** semantic support for C-family languages:
 
@@ -1634,16 +1640,36 @@ For example:
 Autocommands
 ------------
 
+### The `YcmLocationOpened` autocommand
+
+This `User` autocommand is fired when YCM opens the location list window in
+response to the `YcmDiags` command. By default, the location list window is
+opened to full width at the bottom of the screen and its height is set to fit
+all entries. This behavior can be overridden by using the `YcmLocationOpened`
+autocommand which is triggered while the cursor is in the location list window.
+For instance:
+```viml
+function! s:CustomizeYcmLocationWindow()
+  " Move the window to the top of the screen.
+  execute "wincmd K"
+  " Set the window height to 5.
+  execute "5wincmd _"
+endfunction
+
+autocmd User YcmLocationOpened call s:CustomizeYcmLocationWindow()
+```
+
 ### The `YcmQuickFixOpened` autocommand
 
 This `User` autocommand is fired when YCM opens the quickfix window in response
 to the `GoTo*` and `RefactorRename` subcommands. By default, the quickfix window
 is opened to full width at the bottom of the screen and its height is set to fit
 all entries. This behavior can be overridden by using the `YcmQuickFixOpened`
-autocommand. For instance:
+autocommand which is triggered while the cursor is in the quickfix window. For
+instance:
 ```viml
-function s:CustomizeYcmQuickFixWindow()
-  " Move the window at the top of the screen.
+function! s:CustomizeYcmQuickFixWindow()
+  " Move the window to the top of the screen.
   execute "wincmd K"
   " Set the window height to 5.
   execute "5wincmd _"

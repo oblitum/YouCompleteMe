@@ -127,6 +127,7 @@ class YouCompleteMe( object ):
     self._server_popen = None
     self._filetypes_with_keywords_loaded = set()
     self._ycmd_keepalive = YcmdKeepalive()
+    self._server_is_ready_with_cache = False
     self._SetupLogging()
     self._SetupServer()
     self._ycmd_keepalive.Start()
@@ -137,6 +138,9 @@ class YouCompleteMe( object ):
   def _SetupServer( self ):
     self._available_completers = {}
     self._user_notified_about_crash = False
+    self._filetypes_with_keywords_loaded = set()
+    self._server_is_ready_with_cache = False
+
     server_port = utils.GetUnusedLocalhostPort()
     # The temp options file is deleted by ycmd during startup
     with NamedTemporaryFile( delete = False, mode = 'w+' ) as options_file:
@@ -238,7 +242,8 @@ class YouCompleteMe( object ):
     else:
       error_message = EXIT_CODE_UNEXPECTED_MESSAGE.format( code = return_code )
 
-    server_stderr = '\n'.join( self._server_popen.stderr.read().splitlines() )
+    server_stderr = '\n'.join(
+        utils.ToUnicode( self._server_popen.stderr.read() ).splitlines() )
     if server_stderr:
       self._logger.error( server_stderr )
 
@@ -337,6 +342,15 @@ class YouCompleteMe( object ):
   def NativeFiletypeCompletionUsable( self ):
     return ( self.CurrentFiletypeCompletionEnabled() and
              self.NativeFiletypeCompletionAvailable() )
+
+
+  def ServerBecomesReady( self ):
+    if not self._server_is_ready_with_cache:
+      with HandleServerException( display = False ):
+        self._server_is_ready_with_cache = BaseRequest.GetDataFromHandler(
+            'ready' )
+      return self._server_is_ready_with_cache
+    return False
 
 
   def OnFileReadyToParse( self ):
@@ -570,7 +584,7 @@ class YouCompleteMe( object ):
                  self.DiagnosticUiSupportedForCurrentFiletype() )
 
 
-  def PopulateLocationListWithLatestDiagnostics( self ):
+  def _PopulateLocationListWithLatestDiagnostics( self ):
     # Do nothing if loc list is already populated by diag_interface
     if not self._user_options[ 'always_populate_location_list' ]:
       self._diag_interface.PopulateLocationList( self._latest_diagnostics )
@@ -616,16 +630,6 @@ class YouCompleteMe( object ):
       # it our responsibility to ensure that we only apply the
       # warning/error/prompt received once (for each event).
       self._latest_file_parse_request = None
-
-
-  def ShowDetailedDiagnostic( self ):
-    with HandleServerException():
-      detailed_diagnostic = BaseRequest.PostDataToHandler(
-          BuildRequestData(), 'detailed_diagnostic' )
-
-      if 'message' in detailed_diagnostic:
-        vimsupport.PostVimMessage( detailed_diagnostic[ 'message' ],
-                                   warning = False )
 
 
   def DebugInfo( self ):
@@ -713,6 +717,44 @@ class YouCompleteMe( object ):
       return not any([ x in filetype_to_disable for x in filetypes ])
 
 
+  def ShowDetailedDiagnostic( self ):
+    with HandleServerException():
+      detailed_diagnostic = BaseRequest.PostDataToHandler(
+          BuildRequestData(), 'detailed_diagnostic' )
+
+      if 'message' in detailed_diagnostic:
+        vimsupport.PostVimMessage( detailed_diagnostic[ 'message' ],
+                                   warning = False )
+
+
+  def ForceCompileAndDiagnostics( self ):
+    if not self.NativeFiletypeCompletionUsable():
+      vimsupport.PostVimMessage(
+          'Native filetype completion not supported for current file, '
+          'cannot force recompilation.', warning = False )
+      return False
+    vimsupport.PostVimMessage(
+        'Forcing compilation, this will block Vim until done.',
+        warning = False )
+    self.OnFileReadyToParse()
+    self.HandleFileParseRequest( block = True )
+    vimsupport.PostVimMessage( 'Diagnostics refreshed', warning = False )
+    return True
+
+
+  def ShowDiagnostics( self ):
+    if not self.ForceCompileAndDiagnostics():
+      return
+
+    if not self._PopulateLocationListWithLatestDiagnostics():
+      vimsupport.PostVimMessage( 'No warnings or errors detected.',
+                                 warning = False )
+      return
+
+    if self._user_options[ 'open_loclist_on_ycm_diags' ]:
+      vimsupport.OpenLocationList( focus = True )
+
+
   def _AddSyntaxDataIfNeeded( self, extra_data ):
     if not self._user_options[ 'seed_identifiers_with_syntax' ]:
       return
@@ -720,7 +762,8 @@ class YouCompleteMe( object ):
     if filetype in self._filetypes_with_keywords_loaded:
       return
 
-    self._filetypes_with_keywords_loaded.add( filetype )
+    if self._server_is_ready_with_cache:
+      self._filetypes_with_keywords_loaded.add( filetype )
     extra_data[ 'syntax_keywords' ] = list(
        syntax_parse.SyntaxKeywordsForCurrentBuffer() )
 
