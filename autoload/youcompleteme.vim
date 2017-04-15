@@ -90,7 +90,8 @@ function! youcompleteme#Enable()
     " We also need to trigger buf init code on the FileType event because when
     " the user does :enew and then :set ft=something, we need to run buf init
     " code again.
-    autocmd BufRead,BufEnter,FileType * call s:OnBufferVisit()
+    autocmd BufRead,FileType * call s:OnBufferRead()
+    autocmd BufEnter * call s:OnBufferEnter()
     autocmd BufUnload * call s:OnBufferUnload()
     autocmd CursorHold,CursorHoldI * call s:OnCursorHold()
     autocmd InsertLeave * call s:OnInsertLeave()
@@ -100,7 +101,7 @@ function! youcompleteme#Enable()
   augroup END
 
   " BufRead/FileType events are not triggered for the first loaded file.
-  " However, we don't directly call the s:OnBufferVisit function because it
+  " However, we don't directly call the s:OnBufferRead function because it
   " would send requests that can't succeed as the server is not ready yet and
   " would slow down startup.
   if s:AllowedToCompleteInCurrentBuffer()
@@ -403,18 +404,6 @@ function! s:SetUpCompleteopt()
 endfunction
 
 
-" For various functions/use-cases, we want to keep track of whether the buffer
-" has changed since the last time they were invoked. We keep the state of
-" b:changedtick of the last time the specific function was called in
-" b:ycm_changedtick.
-function! s:SetUpYcmChangedTick()
-  let b:ycm_changedtick  =
-        \ get( b:, 'ycm_changedtick', {
-        \   'file_ready_to_parse' : -1,
-        \ } )
-endfunction
-
-
 function! s:OnVimLeave()
   exec s:python_command "ycm_state.OnVimLeave()"
 endfunction
@@ -425,12 +414,21 @@ function! s:OnCompleteDone()
 endfunction
 
 
-function! s:OnBufferVisit()
-  " We need to do this even when we are not allowed to complete in the current
-  " buffer because we might be allowed to complete in the future! The canonical
-  " example is creating a new buffer with :enew and then setting a filetype.
-  call s:SetUpYcmChangedTick()
+function! s:OnBufferRead()
+  if !s:AllowedToCompleteInCurrentBuffer()
+    return
+  endif
 
+  call s:SetUpCompleteopt()
+  call s:SetCompleteFunc()
+  call s:SetOmnicompleteFunc()
+
+  exec s:python_command "ycm_state.OnBufferVisit()"
+  call s:OnFileReadyToParse()
+endfunction
+
+
+function! s:OnBufferEnter()
   if !s:VisitedBufferRequiresReparse()
     return
   endif
@@ -481,21 +479,18 @@ function! s:OnFileReadyToParse()
     return
   endif
 
-  " We need to call this just in case there is no b:ycm_changetick; this can
-  " happen for special buffers.
-  call s:SetUpYcmChangedTick()
-
   " Order is important here; we need to extract any information before
   " reparsing the file again. If we sent the new parse request first, then
   " the response would always be pending when we called
   " HandleFileParseRequest.
   exec s:python_command "ycm_state.HandleFileParseRequest()"
 
-  let buffer_changed = b:changedtick != b:ycm_changedtick.file_ready_to_parse
-  if buffer_changed
+  " We only want to send a new FileReadyToParse event notification if the buffer
+  " has changed since the last time we sent one.
+  if b:changedtick != get( b:, 'ycm_changedtick', -1 )
     exec s:python_command "ycm_state.OnFileReadyToParse()"
+    let b:ycm_changedtick = b:changedtick
   endif
-  let b:ycm_changedtick.file_ready_to_parse = b:changedtick
 endfunction
 
 

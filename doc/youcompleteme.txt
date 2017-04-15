@@ -807,9 +807,9 @@ will notify you to recompile it. You should then rerun the install process.
    where '<generator>' is 'Unix Makefiles' on Unix systems and one of the
    following Visual Studio generators on Windows:
 
-   - 'Visual Studio 11 Win64'
    - 'Visual Studio 12 Win64'
    - 'Visual Studio 14 Win64'
+   - 'Visual Studio 15 Win64'
 
    Remove the 'Win64' part in these generators if your Vim architecture is
    32-bit.
@@ -869,25 +869,27 @@ will notify you to recompile it. You should then rerun the install process.
 
 5. Set up support for additional languages, as desired:
 
-6. C# support: install Mono on non-Windows platforms [41]. Navigate to
-   'YouCompleteMe/third_party/ycmd/third_party/OmniSharpServer' and run
-   'msbuild /property:Configuration=Release' on Windows. Replace 'msbuild'
-   by 'xbuild' on other platforms. On Windows, be sure that the build
-   utility 'msbuild' is in your PATH [37].
+   - C# support: install Mono on non-Windows platforms [41]. Navigate to
+     'YouCompleteMe/third_party/ycmd/third_party/OmniSharpServer' and run
+     'msbuild /property:Configuration=Release' on Windows. Replace
+     'msbuild' by 'xbuild' on other platforms. On Windows, be sure that
+     the build utility 'msbuild' is in your PATH [37].
 
-7. Go support: install Go [27] and add it to your path. Navigate to
-   'YouCompleteMe/third_party/ycmd/third_party/gocode' and run 'go build'.
+   - Go support: install Go [27] and add it to your path. Navigate to
+     'YouCompleteMe/third_party/ycmd/third_party/gocode' and run 'go
+     build'.
 
-8. TypeScript support: as with the quick installation, simply 'npm install
-   -g typescript' after successfully installing Node.js and npm [28].
+   - TypeScript support: as with the quick installation, simply 'npm
+     install -g typescript' after successfully installing Node.js and npm
+     [28].
 
-9. JavaScript support: install Node.js and npm [28]. Then navigate to
-   'YouCompleteMe/third_party/ycmd/third_party/tern_runtime' and run 'npm
-   install --production'
+   - JavaScript support: install Node.js and npm [28]. Then navigate to
+     'YouCompleteMe/third_party/ycmd/third_party/tern_runtime' and run
+     'npm install --production'
 
-10. Rust support: install Rust [29]. Navigate to
-    'YouCompleteMe/third_party/ycmd/third_party/racerd' and run 'cargo
-    build --release'.
+   - Rust support: install Rust [29]. Navigate to
+     'YouCompleteMe/third_party/ycmd/third_party/racerd' and run 'cargo
+     build --release'.
 
 That's it. You're done. Refer to the _User Guide_ section on how to use YCM.
 Don't forget that if you want the C-family semantic completion engine to work,
@@ -3324,7 +3326,7 @@ The author's homepage is http://val.markovic.io.
                                                         *youcompleteme-license*
 License ~
 
-This software is licensed under the GPL v3 license [70]. © 2015-2016
+This software is licensed under the GPL v3 license [70]. © 2015-2017
 YouCompleteMe contributors
 
 ===============================================================================
@@ -3397,7 +3399,7 @@ References ~
 [64] https://github.com/Valloric/YouCompleteMe/issues/303
 [65] http://stackoverflow.com/questions/14552348/runtime-error-r6034-in-embedded-python-application/34696022
 [66] https://github.com/vim/vim/issues/717
-[67] https://github.com/vim/vim-win32-installer/blob/master/appveyor.bat#L90
+[67] https://github.com/vim/vim-win32-installer/blob/a27bbdba9bb87fa0e44c8a00d33d46be936822dd/appveyor.bat#L86-L88
 [68] https://github.com/Valloric/YouCompleteMe/blob/master/CODE_OF_CONDUCT.md
 [69] https://github.com/Valloric/YouCompleteMe/issues?state=open
 [70] http://www.gnu.org/copyleft/gpl.html

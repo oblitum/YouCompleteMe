@@ -594,9 +594,9 @@ process.
     where `<generator>` is `Unix Makefiles` on Unix systems and one of the
     following Visual Studio generators on Windows:
 
-    - `Visual Studio 11 Win64`
     - `Visual Studio 12 Win64`
     - `Visual Studio 14 Win64`
+    - `Visual Studio 15 Win64`
 
     Remove the `Win64` part in these generators if your Vim architecture is
     32-bit.
@@ -654,25 +654,25 @@ process.
 
 5. Set up support for additional languages, as desired:
 
-  - C# support: install [Mono on non-Windows platforms][mono-install]. Navigate
-    to `YouCompleteMe/third_party/ycmd/third_party/OmniSharpServer` and run
-    `msbuild /property:Configuration=Release` on Windows. Replace `msbuild` by
-    `xbuild` on other platforms. On Windows, be sure that [the build utility
-    `msbuild` is in your PATH][add-msbuild-to-path].
+    - C# support: install [Mono on non-Windows platforms][mono-install].
+      Navigate to `YouCompleteMe/third_party/ycmd/third_party/OmniSharpServer`
+      and run `msbuild /property:Configuration=Release` on Windows. Replace
+      `msbuild` by `xbuild` on other platforms. On Windows, be sure that [the
+      build utility `msbuild` is in your PATH][add-msbuild-to-path].
 
-  - Go support: install [Go][go-install] and add it to your path. Navigate to
-    `YouCompleteMe/third_party/ycmd/third_party/gocode` and run `go build`.
+    - Go support: install [Go][go-install] and add it to your path. Navigate to
+      `YouCompleteMe/third_party/ycmd/third_party/gocode` and run `go build`.
 
-  - TypeScript support: as with the quick installation, simply `npm install -g
-    typescript` after successfully installing [Node.js and npm][npm-install].
+    - TypeScript support: as with the quick installation, simply `npm install -g
+      typescript` after successfully installing [Node.js and npm][npm-install].
 
-  - JavaScript support: install [Node.js and npm][npm-install]. Then navigate to
-    `YouCompleteMe/third_party/ycmd/third_party/tern_runtime` and run `npm install
-    --production`
+    - JavaScript support: install [Node.js and npm][npm-install]. Then navigate
+      to `YouCompleteMe/third_party/ycmd/third_party/tern_runtime` and run `npm
+      install --production`
 
-  - Rust support: install [Rust][rust-install]. Navigate to
-    `YouCompleteMe/third_party/ycmd/third_party/racerd` and run
-    `cargo build --release`.
+    - Rust support: install [Rust][rust-install]. Navigate to
+      `YouCompleteMe/third_party/ycmd/third_party/racerd` and run `cargo build
+      --release`.
 
 That's it. You're done. Refer to the _User Guide_ section on how to use YCM.
 Don't forget that if you want the C-family semantic completion engine to work,
@@ -1690,7 +1690,7 @@ you don't need to change any options. These options can be configured in your
 let g:ycm_min_num_of_chars_for_completion = 1
 ```
 
-Note that after changing an option in your [vimrc script] [vimrc] you have to
+Note that after changing an option in your [vimrc script][vimrc] you have to
 restart Vim for the changes to take effect.
 
 ### The `g:ycm_min_num_of_chars_for_completion` option
@@ -2988,10 +2988,10 @@ version of Python.
 
 ### On Windows I get `E887: Sorry, this command is disabled, the Python's site module could not be loaded`
 
-If you are running vim on Windows with Python 2.7.11, this is likely caused by
-a [bug][vim_win-python2.7.11-bug]. Follow this [workaround]
-[vim_win-python2.7.11-bug_workaround] or use a different version (Python 2.7.12
-does not suffer from the bug).
+If you are running vim on Windows with Python 2.7.11, this is likely caused by a
+[bug][vim_win-python2.7.11-bug]. Follow this
+[workaround][vim_win-python2.7.11-bug_workaround] or use a different version
+(Python 2.7.12 does not suffer from the bug).
 
 ### I can't complete python packages in a virtual environment.
 
@@ -3043,7 +3043,7 @@ License
 -------
 
 This software is licensed under the [GPL v3 license][gpl].
-© 2015-2016 YouCompleteMe contributors
+© 2015-2017 YouCompleteMe contributors
 
 [ycmd]: https://github.com/Valloric/ycmd
 [Clang]: http://clang.llvm.org/
@@ -3107,6 +3107,6 @@ This software is licensed under the [GPL v3 license][gpl].
 [ccoc]: https://github.com/Valloric/YouCompleteMe/blob/master/CODE_OF_CONDUCT.md
 [JediHTTP]: https://github.com/vheon/JediHTTP
 [vim_win-python2.7.11-bug]: https://github.com/vim/vim/issues/717
-[vim_win-python2.7.11-bug_workaround]: https://github.com/vim/vim-win32-installer/blob/master/appveyor.bat#L90
+[vim_win-python2.7.11-bug_workaround]: https://github.com/vim/vim-win32-installer/blob/a27bbdba9bb87fa0e44c8a00d33d46be936822dd/appveyor.bat#L86-L88
 [gitter]: https://gitter.im/Valloric/YouCompleteMe
 [ninja-compdb]: https://ninja-build.org/manual.html
