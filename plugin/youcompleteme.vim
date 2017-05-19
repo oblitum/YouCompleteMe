@@ -27,9 +27,16 @@ endfunction
 if exists( "g:loaded_youcompleteme" )
   call s:restore_cpo()
   finish
-elseif v:version < 704 || (v:version == 704 && !has('patch143'))
+elseif v:version < 704 || (v:version == 704 && !has( 'patch1578' ))
   echohl WarningMsg |
-        \ echomsg "YouCompleteMe unavailable: requires Vim 7.4.143+" |
+        \ echomsg "YouCompleteMe unavailable: requires Vim 7.4.1578+" |
+        \ echohl None
+  call s:restore_cpo()
+  finish
+elseif !has( 'timers' )
+  echohl WarningMsg |
+        \ echomsg "YouCompleteMe unavailable: requires Vim compiled with " .
+        \ "the timers feature" |
         \ echohl None
   call s:restore_cpo()
   finish
@@ -49,9 +56,6 @@ let g:loaded_youcompleteme = 1
 " already exist; thus, the user can override the defaults.
 " The only defaults that are here are the ones that are only relevant to the YCM
 " Vim client and not the ycmd server.
-
-let g:ycm_allow_changing_updatetime =
-      \ get( g:, 'ycm_allow_changing_updatetime', 1 )
 
 let g:ycm_open_loclist_on_ycm_diags =
       \ get( g:, 'ycm_open_loclist_on_ycm_diags', 1 )

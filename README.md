@@ -216,7 +216,7 @@ YouCompleteMe, however they may not work for everyone. If the following
 instructions don't work for you, check out the [full installation
 guide](#full-installation-guide).
 
-Make sure you have Vim 7.4.143 with Python 2 or Python 3 support. Ubuntu 14.10
+Make sure you have Vim 7.4.1578 with Python 2 or Python 3 support. Ubuntu 16.04
 and later have a Vim that's recent enough. You can see the version of Vim
 installed by running `vim --version`. If the version is too old, you may need to
 [compile Vim from source][vim-build] (don't worry, it's easy).
@@ -283,7 +283,7 @@ YouCompleteMe, however they may not work for everyone. If the following
 instructions don't work for you, check out the [full installation
 guide](#full-installation-guide).
 
-Make sure you have Vim 7.4.143 with Python 2 or Python 3 support. Fedora 21 and
+Make sure you have Vim 7.4.1578 with Python 2 or Python 3 support. Fedora 21 and
 later have a Vim that's recent enough. You can see the version of Vim installed
 by running `vim --version`. If the version is too old, you may need to [compile
 Vim from source][vim-build] (don't worry, it's easy).
@@ -353,7 +353,7 @@ guide](#full-installation-guide).
 **Important:** we assume that you are using the `cmd.exe` command prompt and
 that you know how to add an executable to the PATH environment variable.
 
-Make sure you have at least Vim 7.4.143 with Python 2 or Python 3 support. You
+Make sure you have at least Vim 7.4.1578 with Python 2 or Python 3 support. You
 can check the version and which Python is supported by typing `:version` inside
 Vim. Look at the features included: `+python/dyn` for Python 2 and
 `+python3/dyn` for Python 3. Take note of the Vim architecture, i.e. 32 or
@@ -432,7 +432,7 @@ guide](#full-installation-guide).
 
 **NOTE:** OpenBSD / FreeBSD are not officially supported platforms by YCM.
 
-Make sure you have Vim 7.4.143 with Python 2 or Python 3 support.
+Make sure you have Vim 7.4.1578 with Python 2 or Python 3 support.
 
 OpenBSD 5.5 and later have a Vim that's recent enough. You can see the version of
 Vim installed by running `vim --version`.
@@ -509,7 +509,7 @@ process.
 
 **Please follow the instructions carefully. Read EVERY WORD.**
 
-1.  **Ensure that your version of Vim is _at least_ 7.4.143 _and_ that it has
+1.  **Ensure that your version of Vim is _at least_ 7.4.1578 _and_ that it has
     support for Python 2 or Python 3 scripting**.
 
     Inside Vim, type `:version`. Look at the first two to three lines of output;
@@ -521,7 +521,7 @@ process.
     If your version of Vim is not recent enough, you may need to [compile Vim
     from source][vim-build] (don't worry, it's easy).
 
-    After you have made sure that you have Vim 7.4.143+, type the following in
+    After you have made sure that you have Vim 7.4.1578+, type the following in
     Vim: `:echo has('python') || has('python3')`. The output should be 1. If
     it's 0, then get a version of Vim with Python support.
 
@@ -1995,26 +1995,6 @@ Default: `1`
 let g:ycm_open_loclist_on_ycm_diags = 1
 ```
 
-### The `g:ycm_allow_changing_updatetime` option
-
-When this option is set to `1`, YCM will change the `updatetime` Vim option to
-`2000` (see `:h updatetime`). This may conflict with some other plugins you have
-(but it's unlikely). The `updatetime` option is the number of milliseconds that
-have to pass before Vim's `CursorHold` (see `:h CursorHold`) event fires. YCM
-runs the completion engines' "file comprehension" systems in the background on
-every such event; the identifier-based engine collects the identifiers whereas
-the semantic engine compiles the file to build an AST.
-
-The Vim default of `4000` for `updatetime` is a bit long, so YCM reduces
-this. Set this option to `0` to force YCM to leave your `updatetime` setting
-alone.
-
-Default: `1`
-
-```viml
-let g:ycm_allow_changing_updatetime = 1
-```
-
 ### The `g:ycm_complete_in_comments` option
 
 When this option is set to `1`, YCM will show the completion menu even when
@@ -2838,19 +2818,8 @@ current file and simple prefix-based filtering.
 
 ### Why does YCM demand such a recent version of Vim?
 
-During YCM's development several show-stopper bugs were encountered in Vim.
-Those needed to be fixed upstream (and were). A few months after those bugs were
-fixed, Vim trunk landed the `pyeval()` function which improved YCM performance
-even more since less time was spent serializing and deserializing data between
-Vim and the embedded Python interpreter. A few critical bugfixes for `pyeval()`
-landed in Vim 7.3.584 (and a few commits before that), and given the current
-availability of Vim 7.4.143, which features improved events for text change
-detection, it has been chosen.
-
-### I get annoying messages in Vim's status area when I type
-
-If you're referring to the `User defined completion <bla bla> back at original`
-and similar, then just update to Vim 7.4.314 (or later) and they'll go away.
+YCM needs a version of Vim with the timers feature to achieve full
+asynchronicity. This feature is available since Vim 7.4.1578.
 
 ### Nasty bugs happen if I have the `vim-autoclose` plugin installed
 
@@ -3018,6 +2987,15 @@ augroup load_ycm
 augroup END
 ```
 
+### YCM does not shut down when I quit Vim
+
+YCM relies on the `VimLeave` event to shut down the [ycmd server][ycmd]. Some
+plugins prevent this event from triggering by exiting Vim through an autocommand
+without using the `nested` keyword (see `:h autocmd-nested`). One of these
+plugins is [vim-nerdtree-tabs][]. You should identify which plugin is
+responsible for the issue and report it to the plugin author. Note that when
+this happens, [ycmd][] will automatically shut itself down after 30 minutes.
+
 Contributor Code of Conduct
 ---------------------------
 
@@ -3112,3 +3090,4 @@ This software is licensed under the [GPL v3 license][gpl].
 [vim_win-python2.7.11-bug_workaround]: https://github.com/vim/vim-win32-installer/blob/a27bbdba9bb87fa0e44c8a00d33d46be936822dd/appveyor.bat#L86-L88
 [gitter]: https://gitter.im/Valloric/YouCompleteMe
 [ninja-compdb]: https://ninja-build.org/manual.html
+[vim-nerdtree-tabs]: https://github.com/jistr/vim-nerdtree-tabs

@@ -99,7 +99,7 @@ CORE_PYTHON3_MESSAGE = (
 CORE_OUTDATED_MESSAGE = (
   'YCM core library too old; PLEASE RECOMPILE by running the install.py '
   'script. See the documentation for more details.' )
-SERVER_IDLE_SUICIDE_SECONDS = 10800  # 3 hours
+SERVER_IDLE_SUICIDE_SECONDS = 1800  # 30 minutes
 DIAGNOSTIC_UI_FILETYPES = set( [ 'cpp', 'cs', 'c', 'objc', 'objcpp',
                                  'typescript', 'swift' ] )
 CLIENT_LOGFILE_FORMAT = 'ycm_'
@@ -223,6 +223,14 @@ class YouCompleteMe( object ):
     return return_code is None
 
 
+  def IsServerReady( self ):
+    if not self._server_is_ready_with_cache and self.IsServerAlive():
+      with HandleServerException( display = False ):
+        self._server_is_ready_with_cache = BaseRequest.GetDataFromHandler(
+            'ready' )
+    return self._server_is_ready_with_cache
+
+
   def _NotifyUserIfServerCrashed( self ):
     if self._user_notified_about_crash or self.IsServerAlive():
       return
@@ -344,15 +352,6 @@ class YouCompleteMe( object ):
   def NativeFiletypeCompletionUsable( self ):
     return ( self.CurrentFiletypeCompletionEnabled() and
              self.NativeFiletypeCompletionAvailable() )
-
-
-  def ServerBecomesReady( self ):
-    if not self._server_is_ready_with_cache:
-      with HandleServerException( display = False ):
-        self._server_is_ready_with_cache = BaseRequest.GetDataFromHandler(
-            'ready' )
-      return self._server_is_ready_with_cache
-    return False
 
 
   def OnFileReadyToParse( self ):
@@ -766,7 +765,7 @@ class YouCompleteMe( object ):
     if filetype in self._filetypes_with_keywords_loaded:
       return
 
-    if self._server_is_ready_with_cache:
+    if self.IsServerReady():
       self._filetypes_with_keywords_loaded.add( filetype )
     extra_data[ 'syntax_keywords' ] = list(
        syntax_parse.SyntaxKeywordsForCurrentBuffer() )
