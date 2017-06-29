@@ -361,6 +361,14 @@ Vim. Look at the features included: `+python/dyn` for Python 2 and
 using a 64-bit client. [Daily updated copies of 32-bit and 64-bit Vim with
 Python 2 and Python 3 support][vim-win-download] are available.
 
+Add the line:
+
+    set encoding=utf-8
+
+to your [vimrc][] if not already present. This option is required by YCM. Note
+that it does not prevent you from editing a file in another encoding than UTF-8.
+You can do that by specifying [the `++enc` argument][++enc] to the `:e` command.
+
 Install YouCompleteMe with [Vundle][].
 
 **Remember:** YCM is a plugin with a compiled component. If you **update** YCM
@@ -656,9 +664,13 @@ process.
 
     - C# support: install [Mono on non-Windows platforms][mono-install].
       Navigate to `YouCompleteMe/third_party/ycmd/third_party/OmniSharpServer`
-      and run `msbuild /property:Configuration=Release` on Windows. Replace
-      `msbuild` by `xbuild` on other platforms. On Windows, be sure that [the
-      build utility `msbuild` is in your PATH][add-msbuild-to-path].
+      and run
+
+          msbuild /property:Configuration=Release /property:TargetFrameworkVersion=v4.5
+
+      Replace `msbuild` by `xbuild` if `msbuild` is not available. On Windows,
+      be sure that [the build utility `msbuild` is in your
+      PATH][add-msbuild-to-path].
 
     - Go support: install [Go][go-install] and add it to your path. Navigate to
       `YouCompleteMe/third_party/ycmd/third_party/gocode` and run `go build`.
@@ -3091,3 +3103,4 @@ This software is licensed under the [GPL v3 license][gpl].
 [gitter]: https://gitter.im/Valloric/YouCompleteMe
 [ninja-compdb]: https://ninja-build.org/manual.html
 [vim-nerdtree-tabs]: https://github.com/jistr/vim-nerdtree-tabs
+[++enc]: http://vimdoc.sourceforge.net/htmldoc/editing.html#++enc

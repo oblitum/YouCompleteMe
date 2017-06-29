@@ -29,8 +29,8 @@ import os
 import json
 import re
 from collections import defaultdict
-from ycmd.utils import ( GetCurrentDirectory, JoinLinesAsUnicode, ToBytes,
-                         ToUnicode )
+from ycmd.utils import ( ByteOffsetToCodepointOffset, GetCurrentDirectory,
+                         JoinLinesAsUnicode, ToBytes, ToUnicode )
 from ycmd import user_options_store
 
 BUFFER_COMMAND_MAP = { 'same-buffer'      : 'edit',
@@ -112,6 +112,17 @@ def CurrentLineContents():
   return ToUnicode( vim.current.line )
 
 
+def CurrentLineContentsAndCodepointColumn():
+  """Returns the line contents as a unicode string and the 0-based current
+  column as a codepoint offset. If the current column is outside the line,
+  returns the column position at the end of the line."""
+  line = CurrentLineContents()
+  byte_column = CurrentColumn()
+  # ByteOffsetToCodepointOffset expects 1-based offset.
+  column = ByteOffsetToCodepointOffset( line, byte_column + 1 ) - 1
+  return line, column
+
+
 def TextAfterCursor():
   """Returns the text after CurrentColumn."""
   return ToUnicode( vim.current.line[ CurrentColumn(): ] )
@@ -120,19 +131,6 @@ def TextAfterCursor():
 def TextBeforeCursor():
   """Returns the text before CurrentColumn."""
   return ToUnicode( vim.current.line[ :CurrentColumn() ] )
-
-
-# Expects version_string in 'MAJOR.MINOR.PATCH' format, e.g. '7.4.301'
-def VimVersionAtLeast( version_string ):
-  major, minor, patch = [ int( x ) for x in version_string.split( '.' ) ]
-
-  # For Vim 7.4.301, v:version is '704'
-  actual_major_and_minor = GetIntValue( 'v:version' )
-  matching_major_and_minor = major * 100 + minor
-  if actual_major_and_minor != matching_major_and_minor:
-    return actual_major_and_minor > matching_major_and_minor
-
-  return GetBoolValue( 'has("patch{0}")'.format( patch ) )
 
 
 # Note the difference between buffer OPTIONS and VARIABLES; the two are not
@@ -199,6 +197,14 @@ def GetBufferFilepath( buffer_object ):
   return os.path.join( GetCurrentDirectory(), str( buffer_object.number ) )
 
 
+def GetCurrentBufferNumber():
+  return vim.current.buffer.number
+
+
+def GetBufferChangedTick( bufnr ):
+  return GetIntValue( 'getbufvar({0}, "changedtick")'.format( bufnr ) )
+
+
 def UnplaceSignInBuffer( buffer_number, sign_id ):
   if buffer_number < 0:
     return
@@ -216,26 +222,6 @@ def PlaceSign( sign_id, line_num, buffer_num, is_error = True ):
   sign_name = 'YcmError' if is_error else 'YcmWarning'
   vim.command( 'sign place {0} name={1} line={2} buffer={3}'.format(
     sign_id, sign_name, line_num, buffer_num ) )
-
-
-def PlaceDummySign( sign_id, buffer_num, line_num ):
-    if buffer_num < 0 or line_num < 0:
-      return
-    vim.command( 'sign define ycm_dummy_sign' )
-    vim.command(
-      'sign place {0} name=ycm_dummy_sign line={1} buffer={2}'.format(
-        sign_id,
-        line_num,
-        buffer_num,
-      )
-    )
-
-
-def UnPlaceDummySign( sign_id, buffer_num ):
-    if buffer_num < 0:
-      return
-    vim.command( 'sign undefine ycm_dummy_sign' )
-    vim.command( 'sign unplace {0} buffer={1}'.format( sign_id, buffer_num ) )
 
 
 def ClearYcmSyntaxMatches():
@@ -634,6 +620,11 @@ def EscapeForVim( text ):
 
 def CurrentFiletypes():
   return VimExpressionToPythonType( "&filetype" ).split( '.' )
+
+
+def GetBufferFiletypes( bufnr ):
+  command = 'getbufvar({0}, "&ft")'.format( bufnr )
+  return VimExpressionToPythonType( command ).split( '.' )
 
 
 def FiletypesForBuffer( buffer_object ):
